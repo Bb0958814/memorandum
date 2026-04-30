@@ -1,0 +1,198 @@
+import React from 'react';
+import { 
+  Home, BookOpen, CheckSquare, BarChart2, PieChart, Settings, 
+  Bell, Search, Plus, Calendar, Clock, ChevronRight, MessageSquare 
+} from 'lucide-react';
+
+const StudyPlanner = () => {
+  return (
+    <div className="flex min-h-screen bg-slate-50 text-slate-600 font-sans">
+      {/* --- 左側側邊欄 Sidebar --- */}
+      <aside className="w-64 bg-white border-r border-slate-200 flex flex-col p-6">
+        <div className="flex items-center gap-3 mb-10 px-2">
+          <div className="bg-blue-600 p-2 rounded-lg text-white">
+            <BookOpen size={24} />
+          </div>
+          <div>
+            <h1 className="font-bold text-blue-900 leading-tight">AI Study Planner</h1>
+            <p className="text-xs text-slate-400">智慧學習規劃系統</p>
+          </div>
+        </div>
+
+        <nav className="space-y-2 flex-1">
+          <NavItem icon={<Home size={20}/>} label="首頁" />
+          <NavItem icon={<BookOpen size={20}/>} label="讀書計畫" />
+          <NavItem icon={<CheckSquare size={20}/>} label="To-Do 清單" active />
+          <NavItem icon={<BarChart2 size={20}/>} label="專注統計" />
+          <NavItem icon={<PieChart size={20}/>} label="學習分析" />
+          <NavItem icon={<Settings size={20}/>} label="設定" />
+        </nav>
+
+        {/* AI 助手小卡 */}
+        <div className="mt-auto bg-blue-50 p-4 rounded-2xl border border-blue-100">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="bg-white p-1 rounded-full shadow-sm text-blue-500">
+              <MessageSquare size={16} />
+            </div>
+            <span className="text-sm font-bold text-blue-800">AI 小幫手</span>
+          </div>
+          <p className="text-xs text-blue-600 mb-3">我可以幫你規劃學習任務！</p>
+          <button className="w-full py-2 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 transition">
+            立即諮詢
+          </button>
+        </div>
+      </aside>
+
+      {/* --- 主要內容區 Main Content --- */}
+      <main className="flex-1 p-8 overflow-y-auto">
+        <header className="flex justify-between items-center mb-8">
+          <div>
+            <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+              <CheckSquare className="text-blue-600" /> To-Do 清單
+            </h2>
+            <p className="text-slate-400 text-sm mt-1">管理你的任務，讓學習更有效率！</p>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <Bell className="text-slate-400" />
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-4 h-4 flex items-center justify-center rounded-full">3</span>
+            </div>
+            <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full border border-slate-200">
+              <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold">S</div>
+              <span className="text-sm font-medium">Student</span>
+            </div>
+          </div>
+        </header>
+
+        {/* --- 統計卡片 Stats --- */}
+        <div className="grid grid-cols-4 gap-6 mb-8">
+          <StatCard color="blue" icon={<CheckSquare />} label="今日任務" value="8" sub="待完成任務" />
+          <StatCard color="green" icon={<CheckSquare />} label="已完成" value="5" sub="今日已完成" />
+          <StatCard color="orange" icon={<Clock />} label="進行中" value="3" sub="正在進行" />
+          <StatCard color="purple" icon={<PieChart />} label="完成率" value="62%" sub="今日進度" />
+        </div>
+
+        <div className="grid grid-cols-3 gap-8">
+          {/* 左側任務清單區 */}
+          <div className="col-span-2 space-y-6">
+            <div className="flex justify-between items-center">
+              <div className="flex gap-2">
+                <FilterBtn label="全部" active />
+                <FilterBtn label="待完成" />
+                <FilterBtn label="進行中" />
+                <FilterBtn label="已完成" />
+              </div>
+              <button className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-blue-200">
+                <Plus size={18}/> 新增任務
+              </button>
+            </div>
+
+            {/* 任務列表 */}
+            <div className="bg-white rounded-3xl p-4 shadow-sm border border-slate-100">
+              <TaskItem title="微積分課後練習" tag="學習" time="今天 23:59" priority="重要" color="red" />
+              <TaskItem title="英文單字複習" tag="學習" time="今天 18:00" priority="中等" color="orange" />
+              <TaskItem title="程式設計作業" tag="作業" time="明天 23:59" priority="重要" color="red" />
+              <TaskItem title="運動 30 分鐘" tag="生活" time="明天 20:00" priority="低" color="blue" />
+              <TaskItem title="國文閱讀理解練習" tag="學習" time="今天 10:30" completed />
+            </div>
+          </div>
+
+          {/* 右側資訊區 */}
+          <div className="space-y-6">
+            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+              <h3 className="font-bold mb-4">優先順序</h3>
+              <div className="space-y-4">
+                <PriorityRow label="高優先" count={2} color="bg-red-500" />
+                <PriorityRow label="中優先" count={3} color="bg-orange-500" />
+                <PriorityRow label="低優先" count={1} color="bg-blue-500" />
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+               <h3 className="font-bold mb-4 text-center">2024年5月</h3>
+               {/* 簡化日曆占位 */}
+               <div className="grid grid-cols-7 gap-2 text-center text-xs">
+                 {['日','一','二','三','四','五','六'].map(d => <div key={d} className="text-slate-400 py-1">{d}</div>)}
+                 {Array.from({length: 31}, (_, i) => (
+                   <div key={i} className={`py-2 rounded-lg ${i === 14 ? 'bg-blue-600 text-white' : 'hover:bg-slate-100'}`}>
+                     {i + 1}
+                   </div>
+                 ))}
+               </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+};
+
+// --- 子組件 ---
+
+const NavItem = ({ icon, label, active = false }) => (
+  <div className={`flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition ${active ? 'bg-blue-50 text-blue-600 font-bold' : 'text-slate-500 hover:bg-slate-50'}`}>
+    {icon} <span>{label}</span>
+  </div>
+);
+
+const StatCard = ({ color, icon, label, value, sub }) => {
+  const colors = {
+    blue: 'bg-blue-50 text-blue-600',
+    green: 'bg-green-50 text-green-600',
+    orange: 'bg-orange-50 text-orange-600',
+    purple: 'bg-purple-50 text-purple-600',
+  };
+  return (
+    <div className="bg-white p-5 rounded-3xl border border-slate-100 flex items-center gap-4 shadow-sm">
+      <div className={`p-4 rounded-2xl ${colors[color]}`}>{icon}</div>
+      <div>
+        <div className="flex items-baseline gap-2">
+           <span className="text-2xl font-black">{value}</span>
+           <span className="text-sm font-bold text-slate-700">{label}</span>
+        </div>
+        <p className="text-[10px] text-slate-400">{sub}</p>
+      </div>
+    </div>
+  );
+};
+
+const TaskItem = ({ title, tag, time, priority, color, completed = false }) => (
+  <div className="flex items-center justify-between p-4 border-b border-slate-50 last:border-0">
+    <div className="flex items-center gap-4">
+      <input type="checkbox" checked={completed} className="w-5 h-5 rounded-md border-slate-300 accent-green-500" readOnly />
+      <div>
+        <div className="flex items-center gap-2">
+          <h4 className={`font-bold ${completed ? 'text-slate-300 line-through' : 'text-slate-700'}`}>{title}</h4>
+          <span className="text-[10px] bg-slate-100 px-2 py-0.5 rounded text-slate-500">{tag}</span>
+        </div>
+        <p className="text-xs text-slate-400 mt-1">完成課本 P.120-125 的練習題</p>
+      </div>
+    </div>
+    <div className="text-right">
+      <span className={`text-[10px] font-bold ${completed ? 'text-green-500' : `text-${color}-500`}`}>
+        {completed ? '已完成' : priority}
+      </span>
+      <div className="flex items-center gap-1 text-[10px] text-slate-400 mt-1">
+        <Clock size={12} /> {time}
+      </div>
+    </div>
+  </div>
+);
+
+const FilterBtn = ({ label, active = false }) => (
+  <button className={`px-5 py-1.5 rounded-lg text-sm font-medium ${active ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-slate-400 border border-slate-200'}`}>
+    {label}
+  </button>
+);
+
+const PriorityRow = ({ label, count, color }) => (
+  <div className="flex items-center justify-between text-sm">
+    <div className="flex items-center gap-2">
+      <div className={`w-1.5 h-4 rounded-full ${color}`}></div>
+      <span className="text-slate-600 font-medium">{label}</span>
+    </div>
+    <span className="font-bold">{count}</span>
+  </div>
+);
+
+export default StudyPlanner;
