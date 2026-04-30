@@ -1,198 +1,335 @@
-import React from 'react';
-import { 
-  Home, BookOpen, CheckSquare, BarChart2, PieChart, Settings, 
-  Bell, Search, Plus, Calendar, Clock, ChevronRight, MessageSquare 
-} from 'lucide-react';
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Study Planner - To-Do 清單</title>
+    <!-- 使用 Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Lucide 圖標庫 -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Noto Sans TC', sans-serif; }
+        .sidebar-active { background-color: #eff6ff; color: #2563eb; font-weight: bold; }
+        .custom-shadow { box-shadow: 0 4px 20px -5px rgba(0, 0, 0, 0.05); }
+    </style>
+</head>
+<body class="bg-[#f8fafc] text-slate-600">
 
-const StudyPlanner = () => {
-  return (
-    <div className="flex min-h-screen bg-slate-50 text-slate-600 font-sans">
-      {/* --- 左側側邊欄 Sidebar --- */}
-      <aside className="w-64 bg-white border-r border-slate-200 flex flex-col p-6">
-        <div className="flex items-center gap-3 mb-10 px-2">
-          <div className="bg-blue-600 p-2 rounded-lg text-white">
-            <BookOpen size={24} />
-          </div>
-          <div>
-            <h1 className="font-bold text-blue-900 leading-tight">AI Study Planner</h1>
-            <p className="text-xs text-slate-400">智慧學習規劃系統</p>
-          </div>
-        </div>
-
-        <nav className="space-y-2 flex-1">
-          <NavItem icon={<Home size={20}/>} label="首頁" />
-          <NavItem icon={<BookOpen size={20}/>} label="讀書計畫" />
-          <NavItem icon={<CheckSquare size={20}/>} label="To-Do 清單" active />
-          <NavItem icon={<BarChart2 size={20}/>} label="專注統計" />
-          <NavItem icon={<PieChart size={20}/>} label="學習分析" />
-          <NavItem icon={<Settings size={20}/>} label="設定" />
-        </nav>
-
-        {/* AI 助手小卡 */}
-        <div className="mt-auto bg-blue-50 p-4 rounded-2xl border border-blue-100">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="bg-white p-1 rounded-full shadow-sm text-blue-500">
-              <MessageSquare size={16} />
-            </div>
-            <span className="text-sm font-bold text-blue-800">AI 小幫手</span>
-          </div>
-          <p className="text-xs text-blue-600 mb-3">我可以幫你規劃學習任務！</p>
-          <button className="w-full py-2 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 transition">
-            立即諮詢
-          </button>
-        </div>
-      </aside>
-
-      {/* --- 主要內容區 Main Content --- */}
-      <main className="flex-1 p-8 overflow-y-auto">
-        <header className="flex justify-between items-center mb-8">
-          <div>
-            <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-              <CheckSquare className="text-blue-600" /> To-Do 清單
-            </h2>
-            <p className="text-slate-400 text-sm mt-1">管理你的任務，讓學習更有效率！</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="relative">
-              <Bell className="text-slate-400" />
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-4 h-4 flex items-center justify-center rounded-full">3</span>
-            </div>
-            <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full border border-slate-200">
-              <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold">S</div>
-              <span className="text-sm font-medium">Student</span>
-            </div>
-          </div>
-        </header>
-
-        {/* --- 統計卡片 Stats --- */}
-        <div className="grid grid-cols-4 gap-6 mb-8">
-          <StatCard color="blue" icon={<CheckSquare />} label="今日任務" value="8" sub="待完成任務" />
-          <StatCard color="green" icon={<CheckSquare />} label="已完成" value="5" sub="今日已完成" />
-          <StatCard color="orange" icon={<Clock />} label="進行中" value="3" sub="正在進行" />
-          <StatCard color="purple" icon={<PieChart />} label="完成率" value="62%" sub="今日進度" />
-        </div>
-
-        <div className="grid grid-cols-3 gap-8">
-          {/* 左側任務清單區 */}
-          <div className="col-span-2 space-y-6">
-            <div className="flex justify-between items-center">
-              <div className="flex gap-2">
-                <FilterBtn label="全部" active />
-                <FilterBtn label="待完成" />
-                <FilterBtn label="進行中" />
-                <FilterBtn label="已完成" />
-              </div>
-              <button className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-blue-200">
-                <Plus size={18}/> 新增任務
-              </button>
+    <div class="flex min-h-screen">
+        <!-- --- 左側側邊欄 Sidebar --- -->
+        <aside class="w-72 bg-white border-r border-slate-100 flex flex-col p-8 sticky top-0 h-screen">
+            <!-- Logo -->
+            <div class="flex items-center gap-3 mb-12">
+                <div class="bg-blue-600 p-2 rounded-xl text-white">
+                    <i data-lucide="book-open" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="font-black text-blue-900 text-lg leading-none">AI Study Planner</h1>
+                    <p class="text-[10px] text-slate-400 mt-1 tracking-widest">智慧學習規劃系統</p>
+                </div>
             </div>
 
-            {/* 任務列表 */}
-            <div className="bg-white rounded-3xl p-4 shadow-sm border border-slate-100">
-              <TaskItem title="微積分課後練習" tag="學習" time="今天 23:59" priority="重要" color="red" />
-              <TaskItem title="英文單字複習" tag="學習" time="今天 18:00" priority="中等" color="orange" />
-              <TaskItem title="程式設計作業" tag="作業" time="明天 23:59" priority="重要" color="red" />
-              <TaskItem title="運動 30 分鐘" tag="生活" time="明天 20:00" priority="低" color="blue" />
-              <TaskItem title="國文閱讀理解練習" tag="學習" time="今天 10:30" completed />
-            </div>
-          </div>
+            <!-- 導覽選單 -->
+            <nav class="space-y-2 flex-1">
+                <a href="#" class="flex items-center gap-4 px-4 py-3 rounded-2xl text-slate-400 hover:bg-slate-50 transition">
+                    <i data-lucide="home" class="w-5 h-5"></i> 首頁
+                </a>
+                <a href="#" class="flex items-center gap-4 px-4 py-3 rounded-2xl text-slate-400 hover:bg-slate-50 transition">
+                    <i data-lucide="calendar-days" class="w-5 h-5"></i> 讀書計畫
+                </a>
+                <a href="#" class="flex items-center gap-4 px-4 py-3 rounded-2xl sidebar-active">
+                    <i data-lucide="check-square" class="w-5 h-5"></i> To-Do 清單
+                </a>
+                <a href="#" class="flex items-center gap-4 px-4 py-3 rounded-2xl text-slate-400 hover:bg-slate-50 transition">
+                    <i data-lucide="bar-chart-3" class="w-5 h-5"></i> 專注統計
+                </a>
+                <a href="#" class="flex items-center gap-4 px-4 py-3 rounded-2xl text-slate-400 hover:bg-slate-50 transition">
+                    <i data-lucide="pie-chart" class="w-5 h-5"></i> 學習分析
+                </a>
+                <a href="#" class="flex items-center gap-4 px-4 py-3 rounded-2xl text-slate-400 hover:bg-slate-50 transition mt-4">
+                    <i data-lucide="settings" class="w-5 h-5"></i> 設定
+                </a>
+            </nav>
 
-          {/* 右側資訊區 */}
-          <div className="space-y-6">
-            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-              <h3 className="font-bold mb-4">優先順序</h3>
-              <div className="space-y-4">
-                <PriorityRow label="高優先" count={2} color="bg-red-500" />
-                <PriorityRow label="中優先" count={3} color="bg-orange-500" />
-                <PriorityRow label="低優先" count={1} color="bg-blue-500" />
-              </div>
+            <!-- AI 助手小卡 -->
+            <div class="bg-blue-50 p-5 rounded-[2rem] border border-blue-100 text-center relative overflow-hidden">
+                <div class="relative z-10">
+                    <div class="bg-white w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm text-blue-500">
+                        <i data-lucide="bot" class="w-6 h-6"></i>
+                    </div>
+                    <h4 class="text-sm font-bold text-blue-900 mb-1">AI 小幫手</h4>
+                    <p class="text-[10px] text-blue-500 mb-4 px-2">需要幫助嗎？我可以幫你規劃學習任務！</p>
+                    <button class="w-full py-2.5 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 transition shadow-md shadow-blue-200">
+                        立即諮詢
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- --- 主要內容區 Main Content --- -->
+        <main class="flex-1 p-10 overflow-y-auto">
+            <!-- Header -->
+            <header class="flex justify-between items-start mb-10">
+                <div>
+                    <div class="flex items-center gap-3">
+                        <div class="bg-white p-2 rounded-lg shadow-sm">
+                            <i data-lucide="clipboard-list" class="w-6 h-6 text-slate-700"></i>
+                        </div>
+                        <h2 class="text-3xl font-black text-slate-800">To-Do 清單</h2>
+                    </div>
+                    <p class="text-slate-400 text-sm mt-2 ml-1">管理你的任務，讓學習更有效率！</p>
+                </div>
+                <div class="flex items-center gap-6">
+                    <div class="relative cursor-pointer">
+                        <i data-lucide="bell" class="text-slate-400 w-6 h-6"></i>
+                        <span class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-4 h-4 flex items-center justify-center rounded-full border-2 border-white font-bold">3</span>
+                    </div>
+                    <div class="flex items-center gap-3 bg-white pl-1 pr-4 py-1 rounded-full border border-slate-200 cursor-pointer hover:shadow-sm transition">
+                        <div class="w-9 h-9 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-sm">S</div>
+                        <span class="text-sm font-bold text-slate-700">Student</span>
+                        <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400"></i>
+                    </div>
+                </div>
+            </header>
+
+            <!-- --- 統計卡片 Stats --- -->
+            <div class="grid grid-cols-4 gap-6 mb-10">
+                <div class="bg-white p-6 rounded-[2rem] border border-slate-100 flex items-center gap-5 custom-shadow">
+                    <div class="p-4 rounded-2xl bg-blue-50 text-blue-600"><i data-lucide="clipboard-check"></i></div>
+                    <div>
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-3xl font-black text-blue-600">8</span>
+                            <span class="text-sm font-bold">今日任務</span>
+                        </div>
+                        <p class="text-[10px] text-slate-400">待完成任務</p>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-[2rem] border border-slate-100 flex items-center gap-5 custom-shadow">
+                    <div class="p-4 rounded-2xl bg-emerald-50 text-emerald-500"><i data-lucide="check-circle-2"></i></div>
+                    <div>
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-3xl font-black text-emerald-500">5</span>
+                            <span class="text-sm font-bold">已完成</span>
+                        </div>
+                        <p class="text-[10px] text-slate-400">今日已完成</p>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-[2rem] border border-slate-100 flex items-center gap-5 custom-shadow">
+                    <div class="p-4 rounded-2xl bg-orange-50 text-orange-400"><i data-lucide="clock-3"></i></div>
+                    <div>
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-3xl font-black text-orange-400">3</span>
+                            <span class="text-sm font-bold">進行中</span>
+                        </div>
+                        <p class="text-[10px] text-slate-400">正在進行</p>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-[2rem] border border-slate-100 flex items-center gap-5 custom-shadow">
+                    <div class="p-4 rounded-2xl bg-purple-50 text-purple-500"><i data-lucide="pie-chart"></i></div>
+                    <div>
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-3xl font-black text-purple-500">62%</span>
+                            <span class="text-sm font-bold">完成率</span>
+                        </div>
+                        <p class="text-[10px] text-slate-400">今日進度</p>
+                    </div>
+                </div>
             </div>
 
-            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-               <h3 className="font-bold mb-4 text-center">2024年5月</h3>
-               {/* 簡化日曆占位 */}
-               <div className="grid grid-cols-7 gap-2 text-center text-xs">
-                 {['日','一','二','三','四','五','六'].map(d => <div key={d} className="text-slate-400 py-1">{d}</div>)}
-                 {Array.from({length: 31}, (_, i) => (
-                   <div key={i} className={`py-2 rounded-lg ${i === 14 ? 'bg-blue-600 text-white' : 'hover:bg-slate-100'}`}>
-                     {i + 1}
-                   </div>
-                 ))}
-               </div>
+            <div class="grid grid-cols-12 gap-8">
+                <!-- 左側：任務清單 -->
+                <div class="col-span-8">
+                    <div class="flex justify-between items-center mb-6">
+                        <div class="flex gap-3 bg-white p-1 rounded-xl border border-slate-100">
+                            <button class="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold shadow-md shadow-blue-100">全部</button>
+                            <button class="px-5 py-2 text-slate-400 hover:text-slate-600 text-sm font-bold">待完成</button>
+                            <button class="px-5 py-2 text-slate-400 hover:text-slate-600 text-sm font-bold">進行中</button>
+                            <button class="px-5 py-2 text-slate-400 hover:text-slate-600 text-sm font-bold">已完成</button>
+                        </div>
+                        <button class="flex items-center gap-2 bg-blue-600 text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 transition">
+                            <i data-lucide="plus" class="w-4 h-4"></i> 新增任務
+                        </button>
+                    </div>
+
+                    <div class="bg-white rounded-[2.5rem] p-8 custom-shadow border border-slate-50 space-y-2">
+                        <!-- 任務 1 -->
+                        <div class="flex items-center justify-between p-4 hover:bg-slate-50 rounded-2xl transition group">
+                            <div class="flex items-center gap-5">
+                                <input type="checkbox" class="w-6 h-6 rounded-lg border-2 border-slate-200 accent-blue-600 cursor-pointer">
+                                <div class="bg-red-50 p-3 rounded-xl text-red-400 group-hover:scale-110 transition"><i data-lucide="book-open"></i></div>
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <h4 class="font-bold text-slate-800">微積分課後練習</h4>
+                                        <span class="bg-red-50 text-red-400 text-[10px] px-2 py-0.5 rounded-md font-bold">學習</span>
+                                    </div>
+                                    <p class="text-xs text-slate-400 mt-1">完成課本 P.120-125 的練習題</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-xs font-bold text-red-500 bg-red-50 px-2 py-1 rounded-lg">重要</span>
+                                <div class="flex items-center gap-1 text-[11px] text-slate-400 mt-2 font-medium">
+                                    <i data-lucide="clock" class="w-3 h-3"></i> 今天 23:59
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 任務 2 -->
+                        <div class="flex items-center justify-between p-4 hover:bg-slate-50 rounded-2xl transition group">
+                            <div class="flex items-center gap-5">
+                                <input type="checkbox" class="w-6 h-6 rounded-lg border-2 border-slate-200 accent-blue-600 cursor-pointer">
+                                <div class="bg-blue-50 p-3 rounded-xl text-blue-400 group-hover:scale-110 transition"><i data-lucide="file-text"></i></div>
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <h4 class="font-bold text-slate-800">英文單字複習</h4>
+                                        <span class="bg-blue-50 text-blue-400 text-[10px] px-2 py-0.5 rounded-md font-bold">學習</span>
+                                    </div>
+                                    <p class="text-xs text-slate-400 mt-1">複習 Day 15-20 單字</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-xs font-bold text-orange-400 bg-orange-50 px-2 py-1 rounded-lg">中等</span>
+                                <div class="flex items-center gap-1 text-[11px] text-slate-400 mt-2 font-medium">
+                                    <i data-lucide="clock" class="w-3 h-3"></i> 今天 18:00
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 任務 3 (已完成) -->
+                        <div class="flex items-center justify-between p-4 bg-slate-50/50 rounded-2xl transition opacity-60">
+                            <div class="flex items-center gap-5">
+                                <input type="checkbox" checked class="w-6 h-6 rounded-lg border-2 border-slate-200 accent-emerald-500 cursor-pointer">
+                                <div class="bg-purple-50 p-3 rounded-xl text-purple-400"><i data-lucide="book"></i></div>
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <h4 class="font-bold text-slate-400 line-through">國文閱讀理解練習</h4>
+                                        <span class="bg-emerald-50 text-emerald-500 text-[10px] px-2 py-0.5 rounded-md font-bold">學習</span>
+                                    </div>
+                                    <p class="text-xs text-slate-300 mt-1">完成閱讀測驗第 3 回</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-xs font-bold text-emerald-500">已完成</span>
+                                <div class="flex items-center gap-1 text-[11px] text-slate-400 mt-2 font-medium">
+                                    <i data-lucide="clock" class="w-3 h-3"></i> 今天 10:30
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pt-6 text-center">
+                            <p class="text-xs text-slate-300 font-medium italic">已顯示全部任務！✨</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 右側：側欄資訊 -->
+                <div class="col-span-4 space-y-8">
+                    <!-- 優先順序 -->
+                    <div class="bg-white p-8 rounded-[2.5rem] custom-shadow border border-slate-50">
+                        <h3 class="font-black text-slate-800 mb-6 flex justify-between items-center text-lg">
+                            優先順序 <i data-lucide="info" class="w-4 h-4 text-slate-300"></i>
+                        </h3>
+                        <div class="space-y-5">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <i data-lucide="flag" class="w-4 h-4 text-red-500 fill-red-500"></i>
+                                    <span class="text-sm font-bold text-slate-600">高優先</span>
+                                </div>
+                                <span class="text-sm font-black text-slate-400">2</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <i data-lucide="flag" class="w-4 h-4 text-orange-400 fill-orange-400"></i>
+                                    <span class="text-sm font-bold text-slate-600">中優先</span>
+                                </div>
+                                <span class="text-sm font-black text-slate-400">3</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <i data-lucide="flag" class="w-4 h-4 text-blue-400 fill-blue-400"></i>
+                                    <span class="text-sm font-bold text-slate-600">低優先</span>
+                                </div>
+                                <span class="text-sm font-black text-slate-400">1</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 日曆 -->
+                    <div class="bg-white p-8 rounded-[2.5rem] custom-shadow border border-slate-50 text-center">
+                        <div class="flex justify-between items-center mb-6 px-2">
+                            <i data-lucide="chevron-left" class="w-4 h-4 text-slate-400 cursor-pointer"></i>
+                            <h3 class="font-black text-slate-800 text-sm">2024年5月</h3>
+                            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400 cursor-pointer"></i>
+                        </div>
+                        <div class="grid grid-cols-7 gap-y-2 text-[10px] font-bold">
+                            <div class="text-slate-300 py-1 uppercase">Sun</div>
+                            <div class="text-slate-300 py-1 uppercase">Mon</div>
+                            <div class="text-slate-300 py-1 uppercase">Tue</div>
+                            <div class="text-slate-300 py-1 uppercase">Wed</div>
+                            <div class="text-slate-300 py-1 uppercase">Thu</div>
+                            <div class="text-slate-300 py-1 uppercase">Fri</div>
+                            <div class="text-slate-300 py-1 uppercase">Sat</div>
+                            <!-- 簡化呈現 15 號為當前日期 -->
+                            <div class="text-slate-300 py-2">28</div><div class="text-slate-300 py-2">29</div><div class="text-slate-300 py-2">30</div>
+                            <div class="py-2 hover:bg-slate-50 rounded-lg cursor-pointer transition">1</div><div class="py-2 hover:bg-slate-50 rounded-lg cursor-pointer">2</div><div class="py-2 hover:bg-slate-50 rounded-lg cursor-pointer">3</div><div class="py-2 hover:bg-slate-50 rounded-lg cursor-pointer">4</div>
+                            <div class="py-2 hover:bg-slate-50 rounded-lg cursor-pointer">12</div><div class="py-2 hover:bg-slate-50 rounded-lg cursor-pointer">13</div><div class="py-2 hover:bg-slate-50 rounded-lg cursor-pointer">14</div>
+                            <div class="py-2 bg-blue-600 text-white rounded-xl shadow-md shadow-blue-100 font-black">15</div>
+                            <div class="py-2 hover:bg-slate-50 rounded-lg cursor-pointer">16</div><div class="py-2 hover:bg-slate-50 rounded-lg cursor-pointer">17</div><div class="py-2 hover:bg-slate-50 rounded-lg cursor-pointer">18</div>
+                        </div>
+                    </div>
+
+                    <!-- 即將到期 -->
+                    <div class="bg-white p-8 rounded-[2.5rem] custom-shadow border border-slate-50">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="font-black text-slate-800">即將到期</h3>
+                            <a href="#" class="text-[10px] text-blue-600 font-bold border-b border-blue-600">查看全部</a>
+                        </div>
+                        <div class="space-y-5">
+                            <div class="flex items-center justify-between group cursor-pointer">
+                                <div class="flex items-center gap-3">
+                                    <i data-lucide="chevron-right" class="w-3 h-3 text-slate-300 group-hover:text-blue-500 transition"></i>
+                                    <span class="text-xs font-bold text-slate-600 truncate w-24">微積分課後練習</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[9px] font-bold text-red-400 bg-red-50 px-2 py-0.5 rounded">今天</span>
+                                    <span class="text-[10px] text-slate-400">23:59</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between group cursor-pointer">
+                                <div class="flex items-center gap-3">
+                                    <i data-lucide="chevron-right" class="w-3 h-3 text-slate-300 group-hover:text-blue-500 transition"></i>
+                                    <span class="text-xs font-bold text-slate-600 truncate w-24">程式設計作業</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[9px] font-bold text-orange-400 bg-orange-50 px-2 py-0.5 rounded">明天</span>
+                                    <span class="text-[10px] text-slate-400">23:59</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-          </div>
-        </div>
-      </main>
+        </main>
     </div>
-  );
-};
 
-// --- 子組件 ---
+    <script>
+        // 初始化 Lucide 圖標
+        lucide.createIcons();
 
-const NavItem = ({ icon, label, active = false }) => (
-  <div className={`flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition ${active ? 'bg-blue-50 text-blue-600 font-bold' : 'text-slate-500 hover:bg-slate-50'}`}>
-    {icon} <span>{label}</span>
-  </div>
-);
-
-const StatCard = ({ color, icon, label, value, sub }) => {
-  const colors = {
-    blue: 'bg-blue-50 text-blue-600',
-    green: 'bg-green-50 text-green-600',
-    orange: 'bg-orange-50 text-orange-600',
-    purple: 'bg-purple-50 text-purple-600',
-  };
-  return (
-    <div className="bg-white p-5 rounded-3xl border border-slate-100 flex items-center gap-4 shadow-sm">
-      <div className={`p-4 rounded-2xl ${colors[color]}`}>{icon}</div>
-      <div>
-        <div className="flex items-baseline gap-2">
-           <span className="text-2xl font-black">{value}</span>
-           <span className="text-sm font-bold text-slate-700">{label}</span>
-        </div>
-        <p className="text-[10px] text-slate-400">{sub}</p>
-      </div>
-    </div>
-  );
-};
-
-const TaskItem = ({ title, tag, time, priority, color, completed = false }) => (
-  <div className="flex items-center justify-between p-4 border-b border-slate-50 last:border-0">
-    <div className="flex items-center gap-4">
-      <input type="checkbox" checked={completed} className="w-5 h-5 rounded-md border-slate-300 accent-green-500" readOnly />
-      <div>
-        <div className="flex items-center gap-2">
-          <h4 className={`font-bold ${completed ? 'text-slate-300 line-through' : 'text-slate-700'}`}>{title}</h4>
-          <span className="text-[10px] bg-slate-100 px-2 py-0.5 rounded text-slate-500">{tag}</span>
-        </div>
-        <p className="text-xs text-slate-400 mt-1">完成課本 P.120-125 的練習題</p>
-      </div>
-    </div>
-    <div className="text-right">
-      <span className={`text-[10px] font-bold ${completed ? 'text-green-500' : `text-${color}-500`}`}>
-        {completed ? '已完成' : priority}
-      </span>
-      <div className="flex items-center gap-1 text-[10px] text-slate-400 mt-1">
-        <Clock size={12} /> {time}
-      </div>
-    </div>
-  </div>
-);
-
-const FilterBtn = ({ label, active = false }) => (
-  <button className={`px-5 py-1.5 rounded-lg text-sm font-medium ${active ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-slate-400 border border-slate-200'}`}>
-    {label}
-  </button>
-);
-
-const PriorityRow = ({ label, count, color }) => (
-  <div className="flex items-center justify-between text-sm">
-    <div className="flex items-center gap-2">
-      <div className={`w-1.5 h-4 rounded-full ${color}`}></div>
-      <span className="text-slate-600 font-medium">{label}</span>
-    </div>
-    <span className="font-bold">{count}</span>
-  </div>
-);
-
-export default StudyPlanner;
+        // 簡單的 JavaScript 互動演示：點擊任務勾選框
+        document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const taskRow = this.closest('.flex.items-center.justify-between');
+                if (this.checked) {
+                    taskRow.classList.add('opacity-60');
+                    taskRow.querySelector('h4').classList.add('line-through', 'text-slate-400');
+                } else {
+                    taskRow.classList.remove('opacity-60');
+                    taskRow.querySelector('h4').classList.remove('line-through', 'text-slate-400');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
