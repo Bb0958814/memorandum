@@ -212,6 +212,29 @@
   .mini-bar-fill { height: 100%; border-radius: 3px; transition: width 0.8s ease; }
   .mini-bar-val { font-size: 11px; color: var(--text-light); width: 28px; text-align: right; }
 
+  .daily-progress-wrap{
+    margin-top:10px;
+  }
+  .daily-progress-label{
+    font-size:11px;
+    color:var(--text-light);
+    margin-bottom:4px;
+  }
+  .daily-progress-bar{
+    width:100%;
+    height:6px;
+    background:var(--sage-pale);
+    border-radius:10px;
+    overflow:hidden;
+  }
+  .daily-progress-fill{
+    height:100%;
+    background:linear-gradient(to right,var(--sage),var(--accent-blue));
+    border-radius:10px;
+    transition:width .4s ease;
+  }
+
+
   /* Toast */
   .toast { position: fixed; bottom: 28px; right: 28px; background: var(--text-dark); color: white; padding: 12px 20px; border-radius: 12px; font-size: 13px; transform: translateY(80px); opacity: 0; transition: all 0.3s; z-index: 1000; pointer-events: none; }
   .toast.show { transform: translateY(0); opacity: 1; }
@@ -261,74 +284,33 @@
     <div class="hero-row">
       <div class="stat-card countdown">
         <div class="label">距離考試</div>
-        <div class="value" id="countdown-val">23</div>
-        <div class="sub" id="countdown-sub">天 · 距期末考試</div>
+        <div class="value" id="countdown-val">--</div>
+        <div class="sub" id="countdown-sub">請設定考試日期</div>
       </div>
       <div class="stat-card">
         <div class="label">今日完成</div>
-        <div class="value"><span id="done-count">2</span><span style="font-size:18px;color:var(--text-light)" id="total-count">/5</span></div>
+        <div class="value"><span id="done-count">0</span><span style="font-size:18px;color:var(--text-light)" id="total-count">/0</span></div>
         <div class="sub">項任務</div>
       </div>
       <div class="stat-card">
         <div class="label">本週完成率</div>
-        <div class="value" style="color:var(--sage)"><span id="weekly-pct">72</span><span style="font-size:18px">%</span></div>
-        <div class="sub" id="weekly-sub">↑ 比上週 +8%</div>
+        <div class="value" style="color:var(--sage)"><span id="weekly-pct">0</span><span style="font-size:18px">%</span></div>
+        <div class="sub" id="weekly-sub">尚未開始</div>
       </div>
     </div>
 
     <div class="section-title">📋 今日任務</div>
-    <div class="task-list" id="home-tasks">
-      <div class="task-item done" onclick="toggleHome(this)">
-        <div class="task-check"><svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></div>
-        <div style="flex:1">
-          <div class="task-name">數學 — 微積分第三章練習</div>
-          <div class="task-sub">預計 45 分鐘</div>
-        </div>
-        <span class="tag high">重要</span>
-      </div>
-      <div class="task-item done" onclick="toggleHome(this)">
-        <div class="task-check"><svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></div>
-        <div style="flex:1">
-          <div class="task-name">英文 — 閱讀測驗練習</div>
-          <div class="task-sub">預計 30 分鐘</div>
-        </div>
-        <span class="tag med">一般</span>
-      </div>
-      <div class="task-item" onclick="toggleHome(this)">
-        <div class="task-check"><svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></div>
-        <div style="flex:1">
-          <div class="task-name">歷史 — 複習近代史重點</div>
-          <div class="task-sub">預計 60 分鐘</div>
-        </div>
-        <span class="tag high">重要</span>
-      </div>
-      <div class="task-item" onclick="toggleHome(this)">
-        <div class="task-check"><svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></div>
-        <div style="flex:1">
-          <div class="task-name">理化 — 電磁學公式整理</div>
-          <div class="task-sub">預計 40 分鐘</div>
-        </div>
-        <span class="tag med">一般</span>
-      </div>
-      <div class="task-item" onclick="toggleHome(this)">
-        <div class="task-check"><svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></div>
-        <div style="flex:1">
-          <div class="task-name">交英文作業</div>
-          <div class="task-sub">截止：今日 23:59</div>
-        </div>
-        <span class="tag low">作業</span>
-      </div>
-    </div>
+    <div class="task-list" id="home-tasks"></div>
 
     <div class="section-title">📊 各科進度</div>
     <div class="progress-block">
-      <div class="progress-label"><span>整體學習進度</span><span id="prog-pct">58%</span></div>
-      <div class="progress-bar"><div class="progress-fill" id="prog-fill" style="width:58%"></div></div>
+      <div class="progress-label"><span>整體學習進度</span><span id="prog-pct">0%</span></div>
+      <div class="progress-bar"><div class="progress-fill" id="prog-fill" style="width:0%"></div></div>
       <div class="subjects-row">
-        <div class="subject-chip"><div class="subject-dot" style="background:#78aec8"></div>數學 45%</div>
-        <div class="subject-chip"><div class="subject-dot" style="background:#e8927a"></div>英文 72%</div>
-        <div class="subject-chip"><div class="subject-dot" style="background:#f0d080"></div>歷史 60%</div>
-        <div class="subject-chip"><div class="subject-dot" style="background:#7aab8e"></div>理化 55%</div>
+        <div class="subject-chip"><div class="subject-dot" style="background:#78aec8"></div>數學 0%</div>
+        <div class="subject-chip"><div class="subject-dot" style="background:#e8927a"></div>英文 0%</div>
+        <div class="subject-chip"><div class="subject-dot" style="background:#f0d080"></div>歷史 0%</div>
+        <div class="subject-chip"><div class="subject-dot" style="background:#7aab8e"></div>理化 0%</div>
       </div>
     </div>
   </div>
@@ -338,8 +320,8 @@
     <div class="alert-box">
       <div class="alert-icon">⚠️</div>
       <div class="alert-text">
-        <h4>偵測到拖延傾向</h4>
-        <p>你最近有 3 項任務連續 2 天未完成。建議先從短任務開始，例如「公式整理」。</p>
+        <h4 id="drag-alert-title">尚未偵測到拖延傾向</h4>
+        <p id="drag-alert-text">完成任務後，AI 會根據你的目標完成度分析拖延傾向與拖延預測。</p>
       </div>
     </div>
 
@@ -400,51 +382,19 @@
         </div>
       </div>
       <button class="date-nav-btn" onclick="changeDate(1)">›</button>
-      <div style="margin-left:auto"><span class="ai-badge">✦ AI 自動排程</span></div>
+      <div style="margin-left:auto"><span class="ai-badge" style="cursor:pointer" onclick="jumpToGenerate()">✦ AI 自動排程</span></div>
     </div>
 
     <div class="week-strip" id="week-strip"></div>
 
-    <div id="plan-content">
-      <div class="plan-subject math">
+    
+<div id="plan-content">
+      <div class="plan-subject">
         <div class="plan-subj-header">
-          <div class="plan-subj-name">📐 數學</div>
-          <div class="plan-time">09:00 – 10:30 · 90 分鐘</div>
+          <div class="plan-subj-name">🗓️ 尚未建立讀書計畫</div>
         </div>
-        <div class="plan-tasks" id="plan-math">
-          <div class="plan-task-item" onclick="togglePlanTask(this)">微積分第三章：極限與連續</div>
-          <div class="plan-task-item" onclick="togglePlanTask(this)">練習題 P.58–62（奇數題）</div>
-          <div class="plan-task-item" onclick="togglePlanTask(this)">複習上次錯題</div>
-        </div>
-      </div>
-      <div class="plan-subject english">
-        <div class="plan-subj-header">
-          <div class="plan-subj-name">📖 英文</div>
-          <div class="plan-time">11:00 – 11:45 · 45 分鐘</div>
-        </div>
-        <div class="plan-tasks" id="plan-english">
-          <div class="plan-task-item" onclick="togglePlanTask(this)">閱讀測驗練習 × 2 篇</div>
-          <div class="plan-task-item" onclick="togglePlanTask(this)">單字複習（第 8–10 課）</div>
-        </div>
-      </div>
-      <div class="plan-subject history">
-        <div class="plan-subj-header">
-          <div class="plan-subj-name">📜 歷史</div>
-          <div class="plan-time">14:00 – 15:00 · 60 分鐘</div>
-        </div>
-        <div class="plan-tasks" id="plan-history">
-          <div class="plan-task-item" onclick="togglePlanTask(this)">近代史：二次大戰後國際局勢</div>
-          <div class="plan-task-item" onclick="togglePlanTask(this)">整理重點年表</div>
-        </div>
-      </div>
-      <div class="plan-subject science">
-        <div class="plan-subj-header">
-          <div class="plan-subj-name">⚗️ 理化</div>
-          <div class="plan-time">15:30 – 16:15 · 45 分鐘</div>
-        </div>
-        <div class="plan-tasks" id="plan-science">
-          <div class="plan-task-item" onclick="togglePlanTask(this)">電磁學公式整理</div>
-          <div class="plan-task-item" onclick="togglePlanTask(this)">電路計算練習 × 5 題</div>
+        <div class="plan-tasks">
+          <div class="plan-task-item">請到「設定」頁面建立你的 AI 讀書計畫</div>
         </div>
       </div>
     </div>
@@ -548,7 +498,7 @@
 
   // Weekly completion data (Mon–Sun), stored as percentages
   // We track which days in current week have tasks done
-  let weeklyData = [80, 60, 90, 50, 40, 0, 0]; // Mon=0 ... Sun=6
+  let weeklyData = [0, 0, 0, 0, 0, 0, 0]; // Mon=0 ... Sun=6
 
   // ===== TAB SWITCHING =====
   function switchTab(name, btn) {
@@ -561,7 +511,7 @@
   // ===== HOME TASKS =====
   function toggleHome(el) {
     el.classList.toggle('done');
-    updateDoneCount();
+    updateDoneCount(); analyzeProcrastination(); updateSubjectProgress();
     updateWeeklyBars();
   }
 
@@ -581,15 +531,7 @@
   }
 
   // ===== TASKS MANAGEMENT =====
-  let tasks = [
-    { id: 1, name: '數學 — 三角函數複習', type: '讀書', priority: 'high', done: false, deadline: null },
-    { id: 2, name: '歷史 — 做筆記整理', type: '讀書', priority: 'med', done: false, deadline: null },
-    { id: 3, name: '交英文作業', type: '作業', priority: 'high', done: false, deadline: formatDeadlineStr(today) },
-    { id: 4, name: '理化習題', type: '讀書', priority: 'med', done: true, deadline: null },
-    { id: 5, name: '整理書桌', type: '生活', priority: 'low', done: false, deadline: null },
-    { id: 6, name: '數學期中考', type: '考試', priority: 'high', done: false, deadline: formatDeadlineStr(new Date(today.getFullYear(), today.getMonth(), today.getDate()+5)) },
-    { id: 7, name: '英文小考', type: '考試', priority: 'med', done: false, deadline: formatDeadlineStr(new Date(today.getFullYear(), today.getMonth(), today.getDate()+2)) },
-  ];
+  let tasks = [];
   let taskFilter = 'all';
 
   function formatDeadlineStr(d) {
@@ -644,13 +586,13 @@
   function toggleTask(id) {
     tasks = tasks.map(t => t.id === id ? { ...t, done: !t.done } : t);
     renderTasks();
-    showToast('任務狀態已更新 ✓');
+    showToast('任務狀態已更新 ✓'); analyzeProcrastination(); updateSubjectProgress();
   }
 
   function deleteTask(id) {
     tasks = tasks.filter(t => t.id !== id);
     renderTasks();
-    showToast('任務已刪除');
+    showToast('任務已刪除'); analyzeProcrastination(); updateSubjectProgress();
   }
 
   function filterTasks(btn, f) {
@@ -674,7 +616,7 @@
     tasks.unshift({ id: Date.now(), name: input.value.trim(), type, priority, done: false, deadline });
     input.value = '';
     renderTasks();
-    showToast('任務已新增！');
+    showToast('任務已新增！'); analyzeProcrastination(); updateSubjectProgress();
   }
 
   // ===== PLAN WEEK STRIP =====
@@ -832,7 +774,7 @@
     const diff = Math.round((examDate - new Date(today.toDateString())) / 86400000);
     document.getElementById('countdown-val').textContent = diff > 0 ? diff : 0;
     const name = document.getElementById('exam-name').value || '考試';
-    document.getElementById('countdown-sub').textContent = `天 · 距${name}`;
+    document.getElementById('countdown-sub').textContent = diff > 0 ? `天 · 距${name}` : '請設定考試日期';
   }
 
   // ===== SETUP — TASK DEADLINE SELECTS =====
@@ -873,7 +815,9 @@
   }
 
   // ===== WEEKLY BARS =====
+  const todayIdx = today.getDay() === 0 ? 6 : today.getDay()-1;
   const weekDayLabels = ['週一','週二','週三','週四','週五','週六','週日'];
+  weekDayLabels[todayIdx] = '今天';
   const weekBarColors = ['#7aab8e','#7aab8e','#7aab8e','#e8927a','#78aec8','#a8c9b5','#a8c9b5'];
 
   function updateWeeklyBars() {
@@ -893,20 +837,61 @@
   }
 
   // ===== GENERATE PLAN =====
-  function generatePlan() {
-    const name = document.getElementById('exam-name').value || '期末考試';
-    const subjects = document.getElementById('subjects-input').value.split(',').map(s => s.trim()).filter(Boolean);
+  
+function generatePlan() {
+    const name = document.getElementById('exam-name').value || '考試';
+    const subjects = document.getElementById('subjects-input').value
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean);
+
     const hours = parseInt(document.getElementById('daily-hours').value) || 4;
-    showToast(`✦ 已為「${name}」生成 AI 讀書計畫！`);
+
+    if(subjects.length === 0){
+      showToast('請先輸入科目');
+      return;
+    }
+
+    const colors = ['math','english','history','science'];
+    let content = '';
+
+    subjects.forEach((subj,index)=>{
+      const mins = Math.floor((hours * 60) / subjects.length);
+
+      content += `
+      <div class="plan-subject ${colors[index % colors.length]}">
+        <div class="plan-subj-header">
+          <div class="plan-subj-name">📘 ${subj}</div>
+          <div class="plan-time">${mins} 分鐘</div>
+        </div>
+
+        <div class="daily-progress-wrap">
+          <div class="daily-progress-label">每日完成度</div>
+          <div class="daily-progress-bar">
+            <div class="daily-progress-fill" style="width:0%"></div>
+          </div>
+        </div>
+
+        <div class="plan-tasks">
+          <div class="plan-task-item" onclick="togglePlanTask(this)">新增 ${subj} 學習任務</div>
+        </div>
+      </div>`;
+    });
+
+    document.getElementById('plan-content').innerHTML = content;
+
     updateCountdown();
-    // Switch to plan panel
-    setTimeout(() => {
-      document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-      document.getElementById('panel-plan').classList.add('active');
-      document.querySelectorAll('.nav-tab')[2].classList.add('active');
-    }, 400);
-  }
+    showToast(`✦ 已生成 ${subjects.length} 科 AI 讀書計畫`);
+
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+
+    document.getElementById('panel-plan').classList.add('active');
+    document.querySelectorAll('.nav-tab')[2].classList.add('active');
+
+    updateSubjectProgress();
+}
+
 
   // ===== SAVE SETTINGS =====
   function saveSettings() {
@@ -922,14 +907,81 @@
     setTimeout(() => t.classList.remove('show'), 2200);
   }
 
-  // ===== INIT =====
+  
+  function jumpToGenerate(){
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+
+    document.getElementById('panel-setup').classList.add('active');
+    document.querySelectorAll('.nav-tab')[3].classList.add('active');
+
+    document.querySelector('.setup-card').scrollIntoView({
+      behavior:'smooth'
+    });
+
+    showToast('請先設定 AI 讀書計畫');
+  }
+
+  function updateSubjectProgress(){
+    const subjectInput = document.getElementById('subjects-input').value
+      .split(',')
+      .map(s=>s.trim())
+      .filter(Boolean);
+
+    const container = document.getElementById('subject-bars');
+
+    container.innerHTML = '';
+
+    subjectInput.forEach(subj=>{
+      const progress = Math.floor(Math.random()*40);
+
+      container.innerHTML += `
+      <div class="mini-bar-row">
+        <span class="name">${subj}</span>
+        <div class="mini-bar-track">
+          <div class="mini-bar-fill" style="width:${progress}%;background:#7aab8e"></div>
+        </div>
+        <span class="mini-bar-val">${progress}%</span>
+      </div>`;
+    });
+  }
+
+  function analyzeProcrastination(){
+    const total = tasks.length;
+    const done = tasks.filter(t=>t.done).length;
+
+    const rate = total ? Math.round((done/total)*100) : 0;
+
+    const title = document.getElementById('drag-alert-title');
+    const text = document.getElementById('drag-alert-text');
+
+    if(total === 0){
+      title.textContent = '尚未建立任務';
+      text.textContent = '新增任務後，AI 會分析你的拖延傾向。';
+      return;
+    }
+
+    if(rate < 30){
+      title.textContent = '⚠️ 高拖延風險';
+      text.textContent = '你目前完成率偏低，容易延後重要任務。建議先完成短任務建立節奏。';
+    }else if(rate < 70){
+      title.textContent = '⏳ 中度拖延傾向';
+      text.textContent = '部分任務有延遲情況，建議固定每日讀書時段。';
+    }else{
+      title.textContent = '✅ 狀態良好';
+      text.textContent = '目前完成度穩定，拖延風險較低。';
+    }
+  }
+
+
+// ===== INIT =====
   initPickerSelects();
   initExamDateSelects();
   initDeadlineSelects();
   renderTasks();
   renderWeekStrip();
   updateWeeklyBars();
-  updateDoneCount();
+  updateDoneCount(); analyzeProcrastination(); updateSubjectProgress();
 
   document.getElementById('exam-name').addEventListener('input', updateCountdown);
 </script>
