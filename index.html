@@ -411,37 +411,48 @@
   <!-- ===== SETUP ===== -->
   <div id="panel-setup" class="panel">
     <div class="setup-grid">
-      
-      <!-- Wrong Answer AI System -->
-      <div class="setup-card" id="wrong-answer-card">
-        <h3>📸 錯題本與魔王關卡生成 <span class="ai-badge" style="cursor:default">✦ AI</span></h3>
-
+      <!-- Exam setup card -->
+      <div class="setup-card" id="exam-setup-card">
+        <h3>📅 考試設定 <span class="ai-badge" style="cursor:default">✦ AI</span></h3>
         <div class="form-field">
-          <label>目前科目（逗號分隔）</label>
-          <input type="text" placeholder="數學, 英文, 歷史" id="subjects-input" oninput="updateSubjectDatabase()">
+          <label>考試名稱</label>
+          <input type="text" placeholder="例：期末考試" id="exam-name" value="期末考試">
         </div>
-
         <div class="form-field">
-          <label>錯題相機</label>
-          <input type="file" id="wrong-question-camera" accept="image/*">
+          <label>考試日期（年 / 月 / 日）</label>
+          <div class="date-selects">
+            <select id="exam-year"></select>
+            <select id="exam-month"></select>
+            <select id="exam-day"></select>
+          </div>
         </div>
-
         <div class="form-field">
-          <label>錯題內容描述</label>
-          <input type="text" id="wrong-question-text" placeholder="例如：英文文法錯誤、數學函數不會">
+          <label>讀書時間段</label>
+          <div class="time-range-row">
+            <input type="time" id="study-start" value="09:00">
+            <span class="time-range-sep">至</span>
+            <input type="time" id="study-end" value="21:00">
+          </div>
         </div>
-
-        <button class="btn-generate" onclick="analyzeWrongQuestion()">✦ AI 分析錯題並加入複習計畫</button>
-
-        <div class="generate-feedback" id="wrong-feedback"></div>
-
-        <div id="wrong-question-records" style="margin-top:18px">
-          <div style="font-size:12px;color:var(--text-light)">尚未建立錯題紀錄</div>
+        <div class="form-field">
+          <label>每天可讀書時間（小時）</label>
+          <input type="number" min="1" max="16" value="4" id="daily-hours">
         </div>
+        <div class="form-field">
+          <label>科目（逗號分隔）</label>
+          <input type="text" placeholder="數學, 英文, 歷史" id="subjects-input" oninput="updateWeakTags()">
+        </div>
+        <div class="form-field">
+          <label>較弱科目 <span style="font-size:10px;color:var(--text-light);font-weight:400;text-transform:none">（點選，會優先排入計畫）</span></label>
+          <div class="weak-tags" id="weak-tags">
+            <span style="font-size:12px;color:var(--text-light)">請先在「科目」欄填入科目名稱</span>
+          </div>
+        </div>
+        <button class="btn-generate" onclick="generatePlan()">✦ AI 自動生成讀書計畫</button>
+        <div class="generate-feedback" id="gen-feedback"></div>
       </div>
 
       <!-- Reminder settings card -->
-
       <div class="setup-card">
         <h3>🔔 提醒設定</h3>
         <div class="form-field">
@@ -469,23 +480,7 @@
       </div>
     </div>
 
-    
-    <div class="section-title">📝 作業紀錄區</div>
-    <div class="setup-card" style="margin-top:12px">
-      <h3>📚 自動偵測作業紀錄</h3>
-
-      <div class="add-task-bar" style="margin-top:0">
-        <input type="text" id="assignment-detect-input"
-          placeholder="例如：資訊老師說明天前繳交作業">
-        <button class="btn-add" onclick="detectAssignment()">偵測作業</button>
-      </div>
-
-      <div id="assignment-records" style="margin-top:16px;color:var(--text-mid);font-size:13px">
-        尚未偵測到作業
-      </div>
-    </div>
-
-<div class="section-title">📈 學習效率分析</div>
+    <div class="section-title">📈 學習效率分析</div>
     <div class="analytics-grid">
       <div class="analytics-card">
         <h4>各科任務進度</h4>
@@ -519,169 +514,802 @@
 
 <div class="toast" id="toast"></div>
 
-
 <script>
-let assignmentRecords = [];
-let wrongQuestionRecords = [];
-let subjectDatabase = [];
+/* ================================================================
+   GLOBAL STATE
+================================================================ */
+const today    = new Date();
+const todayStr = fmtD(today);
+let planOffset = 0;
 
-function updateSubjectDatabase(){
-  const input = document.getElementById('subjects-input');
-  if(!input) return;
+const WD_NAMES = ['日','一','二','三','四','五','六'];
+let weeklyData = [0,0,0,0,0,0,0];  // Mon=0 … Sun=6
 
-  subjectDatabase = input.value
-    .split(',')
-    .map(s=>s.trim())
-    .filter(Boolean);
+let currentExamType = 'midterm';
+let examDates = { midterm:null, final:null };
+let taskInputUsed = false;
+
+// tasks: { id, name, type, priority, done, deadline(YYYY-MM-DD|null),
+//          deadlineTime(HH:MM|null), effectiveDate, carriedFrom }
+let tasks = [];
+let taskFilter = 'all';
+
+const PALETTE = ['#78aec8','#e8927a','#f0d080','#7aab8e','#b88ade','#f5a35a','#a8c9b5','#e86a9a','#50b4d0'];
+const subjectColor = {};
+let paletteIdx = 0;
+function getColor(t) {
+  if (!subjectColor[t]) subjectColor[t] = PALETTE[paletteIdx++ % PALETTE.length];
+  return subjectColor[t];
 }
 
-function detectAssignment(){
-  const input = document.getElementById('assignment-detect-input');
-  const text = input.value.trim();
+// weak subjects set (selected by user in setup)
+let weakSubjects = new Set();
 
-  if(!text) return;
+/* ================================================================
+   UTILITY
+================================================================ */
+function fmtD(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function priorityLabel(p){ return p==='high'?'重要':p==='med'?'一般':'輕鬆'; }
+const TYPE_ICON = {'讀書':'📚','考試':'📝','作業':'📋','生活':'🏠','比賽':'🏆'};
+const SVG_CHECK = `<svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4L4.5 7.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>`;
 
-  const assignmentKeywords = ['作業','報告','繳交','作文','講義','習題'];
-  const hasKeyword = assignmentKeywords.some(k=>text.includes(k));
+// format YYYY-MM-DD HH:MM for display
+function fmtDeadlineDisplay(dl, dt) {
+  if (!dl) return '';
+  const d = new Date(dl + 'T00:00:00');
+  const m = d.getMonth()+1, day = d.getDate();
+  const diff = Math.round((new Date(dl+'T00:00:00') - new Date(todayStr)) / 86400000);
+  const timePart = dt ? ` ${dt}` : '';
+  const dateStr = `${m}/${day}${timePart}`;
+  if (diff < 0)  return { cls:'overdue', text:`⚠ 已過期 ${dateStr}` };
+  if (diff === 0) return { cls:'today',   text:`📌 今天截止${timePart}` };
+  if (diff === 1) return { cls:'soon',    text:`明天截止${timePart}` };
+  return { cls:'normal', text:`截止 ${dateStr}` };
+}
 
-  let detectedSubject = null;
+function dlBadgeHTML(dl, dt) {
+  if (!dl) return '';
+  const r = fmtDeadlineDisplay(dl, dt);
+  if (!r) return '';
+  return `<span class="dl-badge ${r.cls}">${r.text}</span>`;
+}
 
-  subjectDatabase.forEach(sub=>{
-    if(text.includes(sub)){
-      detectedSubject = sub;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2400);
+}
+
+/* ================================================================
+   STRESS CHECK — checks active (undone) task count vs threshold
+   Fires immediately when threshold changes or tasks change
+================================================================ */
+function checkStressNow() {
+  const banner = document.getElementById('stress-banner');
+  const threshold = parseInt(document.getElementById('stress-threshold').value) || 8;
+  const activeCount = tasks.filter(t => !t.done).length;
+  if (activeCount >= threshold) {
+    banner.style.display = 'flex';
+    banner.innerHTML = `
+      <div class="stress-banner">
+        <span class="sb-icon">😰</span>
+        <div class="sb-text">
+          <b>任務量警告！</b>你目前有 <b>${activeCount}</b> 項未完成任務，超過設定的上限（${threshold} 項）。<br>
+          任務過多可能造成壓力，建議先完成或刪除較低優先度的任務。
+        </div>
+        <button class="sb-close" onclick="document.getElementById('stress-banner').style.display='none'">✕</button>
+      </div>`;
+  } else {
+    banner.style.display = 'none';
+  }
+}
+
+/* ================================================================
+   UNIFIED TOGGLE
+================================================================ */
+function setTaskDone(id, done) {
+  const t = tasks.find(x=>x.id===id);
+  if (!t) return;
+  t.done = done;
+  syncAll();
+}
+
+function syncAll() {
+  renderHomeTasks();
+  renderFullTaskList();
+  renderPlanContent();
+  renderWeekStrip();
+  updateStats();
+  renderSubjectChips();
+  renderSubjectBars();
+  checkProcrastination();
+  checkStressNow();
+}
+
+/* ================================================================
+   TAB SWITCHING
+================================================================ */
+function switchTab(name, btn) {
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('panel-'+name).classList.add('active');
+  btn.classList.add('active');
+  if (name==='plan')  { renderWeekStrip(); renderPlanContent(); }
+  if (name==='home')  { renderHomeTasks(); checkStressNow(); }
+  if (name==='tasks') checkProcrastination();
+  if (name==='setup') { renderSubjectBars(); updateWeeklyBars(); }
+}
+
+function goToExamSetup() {
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('panel-setup').classList.add('active');
+  document.querySelectorAll('.nav-tab')[3].classList.add('active');
+  const card = document.getElementById('exam-setup-card');
+  card.scrollIntoView({behavior:'smooth',block:'start'});
+  card.style.transition='box-shadow .3s';
+  card.style.boxShadow='0 0 0 3px var(--sage)';
+  setTimeout(()=>card.style.boxShadow='', 1600);
+}
+
+/* ================================================================
+   EXAM TYPE
+================================================================ */
+function setExamType(type, btn) {
+  currentExamType = type;
+  document.querySelectorAll('.exam-type-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  updateCountdown();
+}
+
+/* ================================================================
+   COUNTDOWN MODAL
+================================================================ */
+function openCountdownModal() {
+  document.getElementById('modal-title').textContent =
+    `設定${currentExamType==='midterm'?'期中考':'期末考'}日期`;
+  document.getElementById('countdown-modal').classList.add('show');
+}
+function closeCountdownModal() {
+  document.getElementById('countdown-modal').classList.remove('show');
+}
+function confirmCountdownModal() {
+  const y=+document.getElementById('modal-year').value;
+  const m=+document.getElementById('modal-month').value;
+  const d=+document.getElementById('modal-day').value;
+  if (y&&m&&d) {
+    examDates[currentExamType]=new Date(y,m-1,d);
+    updateCountdown();
+    showToast(`已設定${currentExamType==='midterm'?'期中考':'期末考'}日期 ✓`);
+  }
+  closeCountdownModal();
+}
+function initModalSelects() {
+  const yS=document.getElementById('modal-year'),mS=document.getElementById('modal-month'),dS=document.getElementById('modal-day');
+  const cy=today.getFullYear();
+  for(let y=cy;y<=cy+2;y++){const o=document.createElement('option');o.value=y;o.textContent=y+'年';if(y===cy)o.selected=true;yS.appendChild(o);}
+  for(let mo=1;mo<=12;mo++){const o=document.createElement('option');o.value=mo;o.textContent=mo+'月';if(mo===today.getMonth()+1)o.selected=true;mS.appendChild(o);}
+  function fillMD(y,m,sel){dS.innerHTML='';for(let dd=1;dd<=new Date(y,m,0).getDate();dd++){const o=document.createElement('option');o.value=dd;o.textContent=dd+'日';if(dd===sel)o.selected=true;dS.appendChild(o);}}
+  fillMD(cy,today.getMonth()+1,today.getDate());
+  yS.addEventListener('change',()=>fillMD(+yS.value,+mS.value,1));
+  mS.addEventListener('change',()=>fillMD(+yS.value,+mS.value,1));
+  document.getElementById('countdown-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeCountdownModal();});
+}
+function updateCountdown() {
+  const ed=examDates[currentExamType];
+  const lbl=currentExamType==='midterm'?'期中考':'期末考';
+  if (!ed){document.getElementById('countdown-val').textContent='--';document.getElementById('countdown-sub').textContent=`請設定${lbl}日期`;return;}
+  const diff=Math.round((ed-new Date(todayStr))/86400000);
+  document.getElementById('countdown-val').textContent=diff>0?diff:0;
+  document.getElementById('countdown-sub').textContent=diff>0?`天 · 距${lbl}`:diff===0?`今天就是${lbl}！加油！`:`${lbl}已結束`;
+}
+
+/* ================================================================
+   HOME TASKS
+================================================================ */
+function getHomeTasks() {
+  const active=tasks.filter(t=>{
+    if(t.done)return false;
+    if(t.effectiveDate)return t.effectiveDate===todayStr;
+    if(t.deadline)return t.deadline<=todayStr;
+    return false;
+  });
+  const done=tasks.filter(t=>{
+    if(!t.done)return false;
+    if(t.effectiveDate===todayStr)return true;
+    if(t.deadline===todayStr)return true;
+    return false;
+  });
+  return [...active,...done];
+}
+
+function renderHomeTasks() {
+  const container=document.getElementById('home-tasks');
+  const list=getHomeTasks();
+  if(list.length===0){
+    container.innerHTML='<div class="empty-today">🌿 今天沒有任務，去「任務」區新增吧！</div>';
+  } else {
+    container.innerHTML=list.map(t=>{
+      const dlHTML = t.deadline ? dlBadgeHTML(t.deadline, t.deadlineTime) : '';
+      return `<div class="task-item ${t.done?'done':''}" onclick="toggleFromHome(${t.id})">
+        <div class="task-check">${SVG_CHECK}</div>
+        <div style="flex:1">
+          <div class="task-name">${t.name}</div>
+          <div class="task-sub">${TYPE_ICON[t.type]||''} ${t.type} · ${priorityLabel(t.priority)}${t.carriedFrom?' · ↩ 順延':''}</div>
+          ${dlHTML}
+        </div>
+        <span class="tag ${t.priority}">${priorityLabel(t.priority)}</span>
+      </div>`;
+    }).join('');
+  }
+  updateStats();
+}
+
+function toggleFromHome(id) {
+  const t=tasks.find(x=>x.id===id);
+  if(!t)return;
+  setTaskDone(id,!t.done);
+  showToast(tasks.find(x=>x.id===id)?.done?'任務完成 ✓':'取消完成');
+}
+
+/* ================================================================
+   STATS
+================================================================ */
+function updateStats() {
+  const list=getHomeTasks();
+  const doneN=list.filter(t=>t.done).length,total=list.length;
+  document.getElementById('done-count').textContent=doneN;
+  document.getElementById('total-count').textContent='/'+total;
+  const pct=total?Math.round(doneN/total*100):0;
+  document.getElementById('prog-fill').style.width=pct+'%';
+  document.getElementById('prog-pct').textContent=pct+'%';
+  const dow=today.getDay(),idx=dow===0?6:dow-1;
+  weeklyData[idx]=pct;
+  updateWeeklyBars();
+}
+
+/* ================================================================
+   SUBJECT CHIPS
+================================================================ */
+function renderSubjectChips() {
+  const row=document.getElementById('subjects-row');
+  const types=[...new Set(tasks.map(t=>t.type))];
+  if(types.length===0){row.innerHTML='';return;}
+  row.innerHTML=types.map(type=>{
+    const color=getColor(type);
+    const mine=tasks.filter(t=>t.type===type);
+    const donePct=mine.length?Math.round(mine.filter(t=>t.done).length/mine.length*100):0;
+    return `<div class="subject-chip">
+      <div class="subject-dot" style="background:${color}" title="點擊更換顏色" onclick="openColorPicker(event,'${type}')"></div>
+      <span>${TYPE_ICON[type]||''} ${type}</span>
+      <span style="color:var(--text-light);font-size:11px">${donePct}%</span>
+    </div>`;
+  }).join('');
+}
+
+function openColorPicker(e,type) {
+  e.stopPropagation();
+  document.querySelectorAll('.color-picker-pop').forEach(el=>el.remove());
+  const pop=document.createElement('div');pop.className='color-picker-pop';
+  PALETTE.forEach(c=>{
+    const sw=document.createElement('div');
+    sw.className='cp-swatch'+(subjectColor[type]===c?' active':'');
+    sw.style.background=c;
+    sw.onclick=ev=>{ev.stopPropagation();subjectColor[type]=c;pop.remove();renderSubjectChips();renderFullTaskList();renderSubjectBars();showToast(`「${type}」顏色已更新`);};
+    pop.appendChild(sw);
+  });
+  const rect=e.target.getBoundingClientRect();
+  pop.style.left=Math.min(rect.left,window.innerWidth-180)+'px';
+  pop.style.top=(rect.bottom+6+window.scrollY)+'px';
+  document.body.appendChild(pop);
+  setTimeout(()=>document.addEventListener('click',function h(){pop.remove();document.removeEventListener('click',h);}),50);
+}
+
+/* ================================================================
+   TASKS PANEL
+================================================================ */
+function onTaskInputChange(){ taskInputUsed=true; }
+
+function addTaskBtn() {
+  const inp=document.getElementById('task-input');
+  const type=document.getElementById('task-type').value;
+  const pri=document.getElementById('task-priority').value;
+  const y=document.getElementById('deadline-year').value;
+  const m=document.getElementById('deadline-month').value;
+  const d=document.getElementById('deadline-day').value;
+  const timeVal=document.getElementById('deadline-time').value||null;
+  const name=inp.value.trim();
+  if(!name)return;
+  const deadline=(y&&m&&d)?`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`:null;
+  let effectiveDate=null;
+  if(deadline&&deadline<=todayStr)effectiveDate=todayStr;
+  else if(deadline)effectiveDate=deadline;
+  tasks.unshift({id:Date.now(),name,type,priority:pri,done:false,deadline,deadlineTime:timeVal,effectiveDate,carriedFrom:null});
+  inp.value='';
+  taskInputUsed=true;
+  syncAll();
+  showToast('任務已新增！');
+}
+
+function renderFullTaskList() {
+  const list=document.getElementById('full-task-list');
+  let filtered=[...tasks];
+  if(taskFilter==='active')filtered=tasks.filter(t=>!t.done);
+  else if(taskFilter==='done')filtered=tasks.filter(t=>t.done);
+  else if(taskFilter==='high')filtered=tasks.filter(t=>t.priority==='high');
+  else if(taskFilter==='exam')filtered=tasks.filter(t=>t.type==='考試');
+  else if(taskFilter==='contest')filtered=tasks.filter(t=>t.type==='比賽');
+  filtered.sort((a,b)=>{
+    if(a.done!==b.done)return a.done?1:-1;
+    const P={high:0,med:1,low:2};return P[a.priority]-P[b.priority];
+  });
+  list.innerHTML=filtered.map(t=>{
+    const col=getColor(t.type);
+    const dlHTML=t.deadline?dlBadgeHTML(t.deadline,t.deadlineTime):'';
+    return `<div class="task-full ${t.done?'done':''}" id="task-${t.id}">
+      <div class="check-box" onclick="toggleFromList(${t.id})">${t.done?SVG_CHECK:''}</div>
+      <div style="flex:1">
+        <div class="task-name">${t.name}</div>
+        <div class="task-meta">
+          <span class="tag ${t.priority}">${priorityLabel(t.priority)}</span>
+          <span style="font-size:11px;color:var(--text-light);display:inline-flex;align-items:center;gap:3px">
+            <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${col}"></span>
+            ${TYPE_ICON[t.type]||''} ${t.type}
+          </span>
+          ${dlHTML}
+          ${t.carriedFrom?`<span class="carryover-badge">↩ 順延</span>`:''}
+        </div>
+      </div>
+      <button class="delete-btn" onclick="deleteTask(${t.id})">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function toggleFromList(id){const t=tasks.find(x=>x.id===id);if(!t)return;setTaskDone(id,!t.done);showToast(tasks.find(x=>x.id===id)?.done?'任務完成 ✓':'取消完成');}
+function deleteTask(id){tasks=tasks.filter(t=>t.id!==id);syncAll();showToast('任務已刪除');}
+function filterTasks(btn,f){taskFilter=f;document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderFullTaskList();}
+
+/* ================================================================
+   PROCRASTINATION DETECTION
+   Uses flexible sensitivity: days / hours / minutes
+================================================================ */
+function checkProcrastination() {
+  const box=document.getElementById('procrast-box');
+  if(!taskInputUsed){box.style.display='none';return;}
+  box.style.display='flex';
+
+  const sensMode=document.getElementById('procrastination-sensitivity').value||'days';
+  const sensVal=parseInt(document.getElementById('sens-value').value)||2;
+
+  // Convert sensitivity to milliseconds
+  const sensMs = sensMode==='minutes' ? sensVal*60000
+               : sensMode==='hours'   ? sensVal*3600000
+               :                        sensVal*86400000;
+
+  const now=new Date();
+  const overdue=tasks.filter(t=>{
+    if(t.done||!t.deadline)return false;
+    // combine deadline date + time
+    const dtStr=t.deadlineTime?`${t.deadline}T${t.deadlineTime}:00`:`${t.deadline}T23:59:00`;
+    const dlDate=new Date(dtStr);
+    return (now-dlDate)>=sensMs;
+  });
+
+  if(overdue.length===0){
+    box.className='procrast-box procrast-ok';
+    box.innerHTML=`<div class="procrast-icon">✅</div>
+      <div class="procrast-text"><h4>目前無拖延傾向</h4><p>所有任務都在期限內，繼續保持！</p></div>`;
+  } else {
+    const lines=overdue.map(t=>{
+      const dtStr=t.deadlineTime?`${t.deadline}T${t.deadlineTime}:00`:`${t.deadline}T23:59:00`;
+      const diffMs=now-new Date(dtStr);
+      let diffText;
+      if(diffMs<3600000)diffText=`${Math.round(diffMs/60000)} 分鐘`;
+      else if(diffMs<86400000)diffText=`${Math.round(diffMs/3600000)} 小時`;
+      else diffText=`${Math.round(diffMs/86400000)} 天`;
+      const tip=t.priority==='high'?'（重要！立即處理）':diffMs>=5*86400000?'（嚴重拖延，優先完成）':'（建議今天完成）';
+      return `・<b>${t.name}</b> — 已逾期 ${diffText} ${tip}`;
+    }).join('<br>');
+    box.className='procrast-box procrast-warn';
+    box.innerHTML=`<div class="procrast-icon">⚠️</div>
+      <div class="procrast-text"><h4>偵測到拖延傾向（${overdue.length} 項）</h4>
+      <p style="line-height:1.8">${lines}</p></div>`;
+  }
+}
+
+// Update label when mode changes
+function updateSensUnit() {
+  const mode=document.getElementById('procrastination-sensitivity').value;
+  document.getElementById('sens-unit-label').textContent=
+    mode==='minutes'?'分鐘以上視為拖延':mode==='hours'?'小時以上視為拖延':'天以上視為拖延';
+  checkProcrastination();
+}
+
+/* ================================================================
+   CARRYOVER
+================================================================ */
+function processCarryover(){
+  tasks.forEach(t=>{
+    if(!t.done&&t.deadline&&t.deadline<todayStr){
+      if(!t.effectiveDate||t.effectiveDate<todayStr){
+        if(!t.carriedFrom)t.carriedFrom=t.deadline;
+        t.effectiveDate=todayStr;
+      }
+    }
+  });
+}
+
+/* ================================================================
+   PLAN
+================================================================ */
+function getTasksForDate(ds){return tasks.filter(t=>t.effectiveDate===ds||t.deadline===ds);}
+
+function renderWeekStrip(){
+  const strip=document.getElementById('week-strip');strip.innerHTML='';
+  for(let i=-3;i<=3;i++){
+    const d=new Date(today);d.setDate(today.getDate()+planOffset+i);
+    const ds=fmtD(d),isSelected=(i===0);
+    const dayTasks=getTasksForDate(ds),hasTasks=dayTasks.length>0;
+    const doneN=dayTasks.filter(t=>t.done).length;
+    const pct=dayTasks.length?Math.round(doneN/dayTasks.length*100):0;
+    const absOff=planOffset+i;
+    const dayLabel=absOff===0?'今天':absOff===-1?'昨天':absOff===1?'明天':'週'+WD_NAMES[d.getDay()];
+    strip.innerHTML+=`<div class="week-day ${isSelected?'selected':''} ${hasTasks?'has-tasks':''}" onclick="selectDayFromStrip(${i})">
+      <div class="wd-day">${dayLabel}</div>
+      <div class="wd-date">${d.getDate()}</div>
+      <div class="wd-dot"></div>
+      <div class="wd-progress"><div class="wd-progress-fill" style="width:${pct}%"></div></div>
+    </div>`;
+  }
+  const cur=new Date(today);cur.setDate(today.getDate()+planOffset);
+  const headerLabel=planOffset===0?'<span>今天</span>':`<span>週${WD_NAMES[cur.getDay()]}</span>`;
+  document.getElementById('plan-date-display').innerHTML=
+    `${cur.getFullYear()}年${cur.getMonth()+1}月${String(cur.getDate()).padStart(2,'0')}日 ${headerLabel} <span style="font-size:14px;color:var(--sage)">▾</span>`;
+  document.getElementById('pick-year').value=cur.getFullYear();
+  document.getElementById('pick-month').value=cur.getMonth()+1;
+  updatePickerDays(cur.getFullYear(),cur.getMonth()+1,cur.getDate());
+  updatePlanDayProgress();
+}
+
+function renderPlanContent(){
+  const cur=new Date(today);cur.setDate(today.getDate()+planOffset);
+  const ds=fmtD(cur);
+  const container=document.getElementById('plan-content');
+  const allDay=getTasksForDate(ds);
+  const pending=allDay.filter(t=>!t.done);
+  const finished=allDay.filter(t=>t.done);
+
+  if(allDay.length===0){
+    container.innerHTML=`<div class="plan-subject">
+      <div class="plan-subj-header"><div class="plan-subj-name">🗓️ 這天沒有任務</div></div>
+      <div class="plan-tasks"><div class="plan-task-item" style="cursor:default">在「任務」區新增任務並設定截止日，這裡就會自動顯示</div></div>
+    </div>`;
+    return;
+  }
+
+  // Group pending by type for cleaner display
+  const typeGroups={};
+  pending.forEach(t=>{
+    if(!typeGroups[t.type])typeGroups[t.type]=[];
+    typeGroups[t.type].push(t);
+  });
+
+  let html='';
+  if(pending.length>0){
+    Object.entries(typeGroups).forEach(([type,tlist])=>{
+      const col=getColor(type);
+      const isWeak=weakSubjects.has(type);
+      html+=`<div class="plan-schedule-group" style="border-left:4px solid ${col}">
+        <div class="psg-header">
+          <div class="psg-dot" style="background:${col}"></div>
+          <div class="psg-name">${TYPE_ICON[type]||''} ${type}</div>
+          ${isWeak?'<span class="psg-weak-badge">⚡ 弱科優先</span>':''}
+          <span class="psg-time">${tlist.length} 項</span>
+        </div>
+        <div class="psg-tasks">
+          ${tlist.map(t=>{
+            const dlText=t.deadline?`截止 ${t.deadline.slice(5).replace('-','/')}${t.deadlineTime?' '+t.deadlineTime:''}`:'' ;
+            return `<div class="psg-task-row" onclick="toggleFromPlan(${t.id})">
+              <span style="flex:1">${t.name}${t.carriedFrom?` <span class="carryover-badge">↩ 順延</span>`:''}</span>
+              ${dlText?`<span class="psg-task-dl">🕐 ${dlText}</span>`:''}
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+    });
+  }
+
+  if(finished.length>0){
+    html+=`<div class="plan-subject done-record">
+      <div class="plan-subj-header"><div class="plan-subj-name">✅ 已完成紀錄（${finished.length} 項）</div></div>
+      <div class="plan-tasks">
+        ${finished.map(t=>`
+          <div class="plan-task-item completed" onclick="toggleFromPlan(${t.id})">
+            <span style="flex:1">${t.name}</span>
+            ${t.deadline?`<span class="plan-task-dl">截止 ${t.deadline.slice(5).replace('-','/')}${t.deadlineTime?' '+t.deadlineTime:''}</span>`:''}
+          </div>`).join('')}
+      </div>
+    </div>`;
+  }
+  container.innerHTML=html;
+  updatePlanDayProgress();
+}
+
+function toggleFromPlan(id){const t=tasks.find(x=>x.id===id);if(!t)return;setTaskDone(id,!t.done);showToast(tasks.find(x=>x.id===id)?.done?'任務完成 ✓':'取消完成');}
+
+function updatePlanDayProgress(){
+  const cur=new Date(today);cur.setDate(today.getDate()+planOffset);
+  const ds=fmtD(cur),all=getTasksForDate(ds);
+  const done=all.filter(t=>t.done).length;
+  const pct=all.length?Math.round(done/all.length*100):0;
+  document.getElementById('plan-day-fill').style.width=pct+'%';
+  document.getElementById('plan-day-pct').textContent=pct+'%';
+}
+
+function changeDate(dir){planOffset+=dir;renderWeekStrip();renderPlanContent();}
+function selectDayFromStrip(i){planOffset+=i;renderWeekStrip();renderPlanContent();}
+
+function toggleDatePicker(){document.getElementById('date-picker-popup').classList.toggle('show');}
+function confirmDatePicker(){
+  const y=+document.getElementById('pick-year').value,m=+document.getElementById('pick-month').value,d=+document.getElementById('pick-day').value;
+  planOffset=Math.round((new Date(y,m-1,d)-new Date(todayStr))/86400000);
+  document.getElementById('date-picker-popup').classList.remove('show');
+  renderWeekStrip();renderPlanContent();showToast(`已跳轉至 ${y}年${m}月${d}日`);
+}
+document.addEventListener('click',e=>{
+  const pop=document.getElementById('date-picker-popup'),dis=document.getElementById('plan-date-display');
+  if(!pop.contains(e.target)&&!dis.contains(e.target))pop.classList.remove('show');
+});
+function updatePickerDays(y,m,sel){
+  const s=document.getElementById('pick-day');s.innerHTML='';
+  for(let i=1;i<=new Date(y,m,0).getDate();i++){const o=document.createElement('option');o.value=i;o.textContent=i;if(i===sel)o.selected=true;s.appendChild(o);}
+}
+function initPickerSelects(){
+  const yS=document.getElementById('pick-year'),mS=document.getElementById('pick-month');
+  const cy=today.getFullYear();
+  for(let y=cy-1;y<=cy+2;y++){const o=document.createElement('option');o.value=y;o.textContent=y+'年';if(y===cy)o.selected=true;yS.appendChild(o);}
+  for(let m=1;m<=12;m++){const o=document.createElement('option');o.value=m;o.textContent=m+'月';if(m===today.getMonth()+1)o.selected=true;mS.appendChild(o);}
+  updatePickerDays(cy,today.getMonth()+1,today.getDate());
+  yS.addEventListener('change',()=>updatePickerDays(+yS.value,+mS.value,+document.getElementById('pick-day').value||1));
+  mS.addEventListener('change',()=>updatePickerDays(+yS.value,+mS.value,+document.getElementById('pick-day').value||1));
+}
+
+/* ================================================================
+   SETUP — exam date selects
+================================================================ */
+function initExamDateSelects(){
+  const eY=document.getElementById('exam-year'),eM=document.getElementById('exam-month'),eD=document.getElementById('exam-day');
+  const def=new Date(today);def.setDate(def.getDate()+23);
+  const cy=today.getFullYear();
+  for(let y=cy;y<=cy+3;y++){const o=document.createElement('option');o.value=y;o.textContent=y+'年';if(y===def.getFullYear())o.selected=true;eY.appendChild(o);}
+  for(let m=1;m<=12;m++){const o=document.createElement('option');o.value=m;o.textContent=m+'月';if(m===def.getMonth()+1)o.selected=true;eM.appendChild(o);}
+  function fillED(y,m,sel){eD.innerHTML='';for(let d=1;d<=new Date(y,m,0).getDate();d++){const o=document.createElement('option');o.value=d;o.textContent=d+'日';if(d===sel)o.selected=true;eD.appendChild(o);}}
+  fillED(def.getFullYear(),def.getMonth()+1,def.getDate());
+  eY.addEventListener('change',()=>fillED(+eY.value,+eM.value,1));
+  eM.addEventListener('change',()=>fillED(+eY.value,+eM.value,1));
+}
+
+/* ================================================================
+   WEAK SUBJECT TAGS — rendered dynamically from subjects-input
+================================================================ */
+function updateWeakTags(){
+  const raw=document.getElementById('subjects-input').value;
+  const subjects=raw.split(',').map(s=>s.trim()).filter(Boolean);
+  const container=document.getElementById('weak-tags');
+  if(subjects.length===0){
+    container.innerHTML='<span style="font-size:12px;color:var(--text-light)">請先在「科目」欄填入科目名稱</span>';
+    return;
+  }
+  // Remove any weakSubjects that no longer exist
+  [...weakSubjects].forEach(s=>{ if(!subjects.includes(s)) weakSubjects.delete(s); });
+  container.innerHTML=subjects.map(s=>{
+    const isWeak=weakSubjects.has(s);
+    return `<span class="weak-tag ${isWeak?'active':''}" onclick="toggleWeak('${s}',this)">${s}${isWeak?' ⚡':''}</span>`;
+  }).join('');
+}
+
+function toggleWeak(subj, el){
+  if(weakSubjects.has(subj)){weakSubjects.delete(subj);el.classList.remove('active');el.textContent=subj;}
+  else{weakSubjects.add(subj);el.classList.add('active');el.textContent=subj+' ⚡';}
+}
+
+/* ================================================================
+   SETUP — deadline selects (task bar)
+================================================================ */
+function initDeadlineSelects(){
+  const y=document.getElementById('deadline-year'),m=document.getElementById('deadline-month'),d=document.getElementById('deadline-day');
+  const cy=today.getFullYear();
+  {const o=document.createElement('option');o.value='';o.textContent='年';y.appendChild(o);}
+  for(let yr=cy;yr<=cy+2;yr++){const o=document.createElement('option');o.value=yr;o.textContent=yr;y.appendChild(o);}
+  {const o=document.createElement('option');o.value='';o.textContent='月';m.appendChild(o);}
+  for(let mo=1;mo<=12;mo++){const o=document.createElement('option');o.value=String(mo).padStart(2,'0');o.textContent=mo+'月';m.appendChild(o);}
+  function fillDD(){
+    const prev=d.value;d.innerHTML='';
+    {const o=document.createElement('option');o.value='';o.textContent='日';d.appendChild(o);}
+    const yv=parseInt(y.value)||cy,mv=parseInt(m.value)||1;
+    for(let di=1;di<=new Date(yv,mv,0).getDate();di++){const o=document.createElement('option');o.value=di;o.textContent=di+'日';if(di===parseInt(prev))o.selected=true;d.appendChild(o);}
+  }
+  fillDD();
+  y.addEventListener('change',fillDD);m.addEventListener('change',fillDD);
+}
+
+/* ================================================================
+   GENERATE PLAN — AI schedule with weak-subject priority + time slot
+================================================================ */
+function generatePlan(){
+  const fb=document.getElementById('gen-feedback');
+  fb.className='generate-feedback';
+
+  const name=document.getElementById('exam-name').value.trim()||'期末考試';
+  const subjRaw=document.getElementById('subjects-input').value.trim();
+  const hoursVal=parseInt(document.getElementById('daily-hours').value)||4;
+  const studyStart=document.getElementById('study-start').value||'09:00';
+  const studyEnd=document.getElementById('study-end').value||'21:00';
+  const ey=+document.getElementById('exam-year').value;
+  const em=+document.getElementById('exam-month').value;
+  const ed=+document.getElementById('exam-day').value;
+
+  if(!ey||!em||!ed){fb.className='generate-feedback err';fb.textContent='⚠ 請先選擇考試日期！';return;}
+  if(!subjRaw){fb.className='generate-feedback err';fb.textContent='⚠ 請輸入至少一個科目！';return;}
+
+  const subjects=subjRaw.split(',').map(s=>s.trim()).filter(Boolean);
+  const examDate=new Date(ey,em-1,ed);
+  const daysLeft=Math.max(1,Math.round((examDate-new Date(todayStr))/86400000));
+  if(daysLeft<=0){fb.className='generate-feedback err';fb.textContent='⚠ 考試日期已過，請重新設定！';return;}
+
+  examDates[currentExamType]=examDate;
+  updateCountdown();
+
+  // Sort: weak subjects first, then rest
+  const weakArr=[...weakSubjects].filter(s=>subjects.includes(s));
+  const normalArr=subjects.filter(s=>!weakSubjects.has(s));
+  const sortedSubjects=[...weakArr,...normalArr];
+
+  // Calculate daily minutes available
+  const [sh,sm]=studyStart.split(':').map(Number);
+  const [eh,em2]=studyEnd.split(':').map(Number);
+  const availableMinutes=Math.max(60,(eh*60+em2)-(sh*60+sm));
+  const dailyMinutesPerSubj=Math.floor(availableMinutes/sortedSubjects.length);
+
+  // Distribute sessions: weak subjects get 2x sessions in first half of days
+  let newCount=0;
+  sortedSubjects.forEach((subj,si)=>{
+    const isWeak=weakSubjects.has(subj);
+    const sessionsTotal=isWeak ? Math.min(daysLeft, Math.ceil(daysLeft*0.6)+1) : Math.min(daysLeft, Math.ceil(daysLeft*0.4)+1);
+    for(let session=0;session<sessionsTotal;session++){
+      // Spread sessions across days
+      let dayIdx;
+      if(isWeak){
+        // Weak subjects fill early days first
+        dayIdx = session % daysLeft;
+      } else {
+        // Normal subjects after the first few days
+        dayIdx = (Math.floor(daysLeft/3) + (si - weakArr.length) + session * Math.max(1,Math.floor(daysLeft/sessionsTotal))) % daysLeft;
+      }
+      const taskDate=new Date(today);
+      taskDate.setDate(today.getDate()+dayIdx);
+      if(taskDate>=examDate)break;
+      const ds=fmtD(taskDate);
+
+      // Assign time slot within study period
+      const slotStart=sh*60+sm + (si % sortedSubjects.length)*dailyMinutesPerSubj;
+      const slotH=String(Math.floor(slotStart/60)).padStart(2,'0');
+      const slotM=String(slotStart%60).padStart(2,'0');
+      const slotEnd=slotStart+dailyMinutesPerSubj;
+      const slotEH=String(Math.floor(slotEnd/60)).padStart(2,'0');
+      const slotEM=String(slotEnd%60).padStart(2,'0');
+      const timeSlotLabel=`${slotH}:${slotM}–${slotEH}:${slotEM}`;
+
+      tasks.push({
+        id:Date.now()+si*100000+session*100+Math.random()*10|0,
+        name:`${subj} 複習 ${session+1}${isWeak?' ⚡':''}`,
+        type:'讀書',
+        priority:isWeak&&session===0?'high':'med',
+        done:false,
+        deadline:ds,
+        deadlineTime:`${slotEH}:${slotEM}`,
+        effectiveDate:ds,
+        carriedFrom:null,
+        _timeSlot:timeSlotLabel,
+        _subject:subj
+      });
+      newCount++;
     }
   });
 
-  if(!detectedSubject || !hasKeyword){
-    showToast('未偵測到有效作業');
-    return;
-  }
-
-  assignmentRecords.unshift({
-    subject: detectedSubject,
-    content: text,
-    time: new Date().toLocaleString('zh-TW')
-  });
-
-  tasks.unshift({
-    id: Date.now(),
-    name: detectedSubject + ' 作業：' + text,
-    type: detectedSubject,
-    priority:'high',
-    done:false,
-    deadline: todayStr,
-    deadlineTime:null,
-    effectiveDate: todayStr,
-    carriedFrom:null
-  });
-
-  renderAssignmentRecords();
   syncAll();
+  const weakNote=weakArr.length>0?`（${weakArr.join('、')} 為弱科，已優先排入前段）`:'';
+  fb.className='generate-feedback ok';
+  fb.textContent=`✓ 已為「${name}」生成 ${newCount} 項讀書任務！讀書時段 ${studyStart}–${studyEnd}${weakNote}`;
+  showToast(`✦ 已生成「${name}」讀書計畫！`);
 
-  showToast('剛才偵測到 ' + detectedSubject + ' 發布新作業！');
-
-  input.value='';
+  setTimeout(()=>{
+    document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    document.getElementById('panel-plan').classList.add('active');
+    document.querySelectorAll('.nav-tab')[2].classList.add('active');
+    renderWeekStrip();renderPlanContent();
+  },800);
 }
 
-function renderAssignmentRecords(){
-  const box = document.getElementById('assignment-records');
-
-  if(assignmentRecords.length===0){
-    box.innerHTML='尚未偵測到作業';
-    return;
-  }
-
-  box.innerHTML = assignmentRecords.map(r=>`
-    <div style="padding:12px;margin-bottom:10px;border-radius:12px;background:rgba(255,255,255,.75);border:1px solid var(--border)">
-      <div style="font-weight:600">${r.subject} 作業</div>
-      <div style="font-size:13px;margin-top:4px">${r.content}</div>
-      <div style="font-size:11px;color:var(--text-light);margin-top:6px">${r.time}</div>
-    </div>
-  `).join('');
+/* ================================================================
+   SAVE SETTINGS
+================================================================ */
+function saveSettings(){
+  const fb=document.getElementById('save-feedback');
+  const time=document.getElementById('reminder-time').value;
+  const sensMode=document.getElementById('procrastination-sensitivity').value;
+  const sensVal=document.getElementById('sens-value').value;
+  const modeLabel={'days':'天','hours':'小時','minutes':'分鐘'}[sensMode];
+  fb.className='generate-feedback ok';
+  fb.textContent=`✓ 設定已儲存！每日提醒：${time}，拖延偵測：超過 ${sensVal} ${modeLabel}視為拖延`;
+  showToast('設定已儲存 ✓');
+  checkProcrastination();
+  checkStressNow();
 }
 
-function analyzeWrongQuestion(){
-  const text = document.getElementById('wrong-question-text').value.trim();
-  const feedback = document.getElementById('wrong-feedback');
-
-  if(!text){
-    feedback.className='generate-feedback err';
-    feedback.textContent='請輸入錯題內容';
-    return;
-  }
-
-  let detectedSubject = '未分類';
-  let detectedUnit = '基礎觀念';
-  let detectedConcept = '需要加強';
-
-  if(text.includes('函數') || text.includes('方程式')){
-    detectedSubject='數學';
-    detectedUnit='函數與方程式';
-    detectedConcept='函數運算';
-  }
-  else if(text.includes('文法') || text.includes('單字')){
-    detectedSubject='英文';
-    detectedUnit='英文文法';
-    detectedConcept='時態與句型';
-  }
-  else if(text.includes('年代') || text.includes('戰爭')){
-    detectedSubject='歷史';
-    detectedUnit='歷史事件';
-    detectedConcept='年代判斷';
-  }
-
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate()+1);
-
-  tasks.unshift({
-    id: Date.now() + Math.random(),
-    name: '錯題複習：' + detectedUnit,
-    type: detectedSubject,
-    priority:'high',
-    done:false,
-    deadline: fmtD(tomorrow),
-    deadlineTime:'20:00',
-    effectiveDate: fmtD(tomorrow),
-    carriedFrom:null
-  });
-
-  wrongQuestionRecords.unshift({
-    subject: detectedSubject,
-    unit: detectedUnit,
-    concept: detectedConcept,
-    text:text,
-    time:new Date().toLocaleString('zh-TW')
-  });
-
-  renderWrongQuestionRecords();
-  syncAll();
-
-  feedback.className='generate-feedback ok';
-  feedback.textContent='AI 已分析：' + detectedSubject + '｜' + detectedUnit + '｜' + detectedConcept + '，並自動加入明天讀書計畫。';
-
-  document.getElementById('wrong-question-text').value='';
-
-  showToast('已新增錯題複習計畫！');
+/* ================================================================
+   SUBJECT BARS (analytics)
+================================================================ */
+function renderSubjectBars(){
+  const container=document.getElementById('subject-bars');
+  const types=[...new Set(tasks.map(t=>t.type))];
+  if(types.length===0){container.innerHTML='<div class="analytics-empty">新增任務後將自動顯示各科統計</div>';return;}
+  container.innerHTML=types.map(type=>{
+    const color=getColor(type);
+    const mine=tasks.filter(t=>t.type===type);
+    const pct=Math.round(mine.filter(t=>t.done).length/mine.length*100);
+    return `<div class="mini-bar-row">
+      <span class="name">${type}</span>
+      <div class="mini-bar-track"><div class="mini-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+      <span class="mini-bar-val">${pct}%</span>
+    </div>`;
+  }).join('');
 }
 
-function renderWrongQuestionRecords(){
-  const box = document.getElementById('wrong-question-records');
-
-  if(wrongQuestionRecords.length===0){
-    box.innerHTML='<div style="font-size:12px;color:var(--text-light)">尚未建立錯題紀錄</div>';
-    return;
-  }
-
-  box.innerHTML = wrongQuestionRecords.map(r=>`
-    <div style="padding:14px;margin-bottom:12px;border-radius:14px;background:rgba(255,255,255,.75);border:1px solid var(--border)">
-      <div style="font-weight:700">${r.subject}｜${r.unit}</div>
-      <div style="font-size:13px;margin-top:6px">錯誤觀念：${r.concept}</div>
-      <div style="font-size:13px;margin-top:4px">${r.text}</div>
-      <div style="font-size:11px;color:var(--text-light);margin-top:8px">${r.time}</div>
-    </div>
-  `).join('');
+/* ================================================================
+   WEEKLY BARS
+================================================================ */
+function updateWeeklyBars(){
+  const container=document.getElementById('weekly-bars');if(!container)return;
+  const todayDow=today.getDay(),todayIdx=todayDow===0?6:todayDow-1;
+  const BAR_COLORS=['#7aab8e','#7aab8e','#7aab8e','#e8927a','#78aec8','#a8c9b5','#a8c9b5'];
+  container.innerHTML=[0,1,2,3,4,5,6].map(i=>{
+    const diff=i-todayIdx;
+    const label=diff===0?'今天':diff===-1?'昨天':diff===1?'明天':['週一','週二','週三','週四','週五','週六','週日'][i];
+    return `<div class="mini-bar-row">
+      <span class="name" style="width:38px">${label}</span>
+      <div class="mini-bar-track"><div class="mini-bar-fill" style="width:${weeklyData[i]}%;background:${BAR_COLORS[i]}"></div></div>
+      <span class="mini-bar-val">${weeklyData[i]}%</span>
+    </div>`;
+  }).join('');
+  const vals=weeklyData.filter(v=>v>0);
+  document.getElementById('weekly-pct').textContent=vals.length?Math.round(vals.reduce((a,b)=>a+b,0)/vals.length):0;
 }
+
+/* ================================================================
+   INIT
+================================================================ */
+// Wire sensitivity mode change
+document.getElementById('procrastination-sensitivity').addEventListener('change', updateSensUnit);
+
+initPickerSelects();
+initExamDateSelects();
+initDeadlineSelects();
+initModalSelects();
+processCarryover();
+renderWeekStrip();
+renderPlanContent();
+renderHomeTasks();
+updateWeeklyBars();
+updateCountdown();
+renderSubjectChips();
+renderSubjectBars();
+renderFullTaskList();
+updateSensUnit();
 </script>
-
 </body>
 </html>
